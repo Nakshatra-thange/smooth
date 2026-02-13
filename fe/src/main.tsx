@@ -1,8 +1,13 @@
 import { createRoot } from "react-dom/client";
+import { Buffer } from 'buffer'
 import App from "./App.tsx";
 import "./index.css";
-import {Buffer} from 'buffer'
+import { AppWalletProvider } from "./providers/WalletProvider.tsx";
 
-window.Buffer= Buffer
+window.Buffer = Buffer
 
-createRoot(document.getElementById("root")!).render(<App />);
+createRoot(document.getElementById("root")!).render(
+  <AppWalletProvider>
+    <App />
+  </AppWalletProvider>
+);

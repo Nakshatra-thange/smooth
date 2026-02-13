@@ -1,44 +1,22 @@
-import axios from 'axios'
-import { STORAGE_KEYS } from '../utils/storage.ts'
+import { apiClient } from './apiClient'
 
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
-  timeout: 30_000,
-  headers: {
-    'Content-Type': 'application/json'
+const api = {
+  get: async <T = any>(...args: Parameters<typeof apiClient.get>) => {
+    const res = await apiClient.get<T>(...args)
+    return res.data
+  },
+  post: async <T = any>(...args: Parameters<typeof apiClient.post>) => {
+    const res = await apiClient.post<T>(...args)
+    return res.data
+  },
+  patch: async <T = any>(...args: Parameters<typeof apiClient.patch>) => {
+    const res = await apiClient.patch<T>(...args)
+    return res.data
+  },
+  delete: async <T = any>(...args: Parameters<typeof apiClient.delete>) => {
+    const res = await apiClient.delete<T>(...args)
+    return res.data
   }
-})
-
-api.interceptors.request.use(config => {
-  const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-})
-
-api.interceptors.response.use(
-  response => response.data,
-  error => {
-    if (error?.response) {
-      const status = error.response.status
-      const serverMessage =
-        error.response?.data?.error?.message
-
-      if (status === 401) {
-        localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN)
-        window.location.href = '/'
-      }
-
-      throw new Error(
-        serverMessage || 'Request failed'
-      )
-    }
-
-    throw new Error(
-      'Network error, please check connection'
-    )
-  }
-)
+}
 
 export default api

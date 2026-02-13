@@ -1,77 +1,83 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useRef,
-  useState
-} from 'react'
-import { getBalance } from '../services/walletService'
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react'
+import { getBalance } from '@/services/walletService'
 import { useAuth } from './AuthContext'
+import { BALANCE_REFRESH_INTERVAL_MS } from '@/constants'
 
-type Balance = {
-  sol: number
-  tokens: any[]
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface TokenBalance {
+  mint: string
+  symbol: string
+  name: string
+  amount: number
+  decimals: number
+  logoURI?: string
 }
 
-type BalanceState = {
-  balance: Balance | null
+export interface WalletBalance {
+  sol: number
+  tokens: TokenBalance[]
+}
+
+interface BalanceState {
+  balance: WalletBalance | null
   isLoading: boolean
   lastUpdated: Date | null
 }
 
-type BalanceContextType = BalanceState & {
+interface BalanceContextValue extends BalanceState {
   refreshBalance: () => Promise<void>
 }
 
-const BalanceContext =
-  createContext<BalanceContextType | null>(null)
+// ─── Context ──────────────────────────────────────────────────────────────────
 
-export function BalanceProvider({
-  children
-}: {
-  children: React.ReactNode
-}) {
+const BalanceContext = createContext<BalanceContextValue | null>(null)
+
+// ─── Provider ─────────────────────────────────────────────────────────────────
+
+export function BalanceProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth()
-  const [balance, setBalance] =
-    useState<Balance | null>(null)
-  const [isLoading, setIsLoading] =
-    useState(false)
-  const [lastUpdated, setLastUpdated] =
-    useState<Date | null>(null)
-  const intervalRef = useRef<
-    ReturnType<typeof setInterval> | null
-  >(null)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const [state, setState] = useState<BalanceState>({
+    balance: null,
+    isLoading: false,
+    lastUpdated: null,
+  })
+
+  // ─── fetchBalance ──────────────────────────────────────────────────────────
 
   async function fetchBalance() {
-    setIsLoading(true)
+    setState(s => ({ ...s, isLoading: true }))
     try {
-      const data = await getBalance()
-      setBalance(data)
-      setLastUpdated(new Date())
-    } catch (error) {
-      console.error('Failed to fetch balance', error)
-    } finally {
-      setIsLoading(false)
+      const balance = await getBalance()
+      setState({ balance, isLoading: false, lastUpdated: new Date() })
+    } catch (err) {
+      console.error('[BalanceContext] Failed to fetch balance:', err)
+      setState(s => ({ ...s, isLoading: false }))
     }
   }
 
-  async function refreshBalance() {
-    await fetchBalance()
-  }
+  // ─── Auto-fetch + interval ─────────────────────────────────────────────────
 
   useEffect(() => {
     if (isAuthenticated) {
+      // Fetch immediately when user authenticates
       fetchBalance()
-      intervalRef.current = setInterval(
-        fetchBalance,
-        30_000
-      )
+
+      // Then refresh every 30 seconds
+      intervalRef.current = setInterval(fetchBalance, BALANCE_REFRESH_INTERVAL_MS)
     } else {
-      setBalance(null)
-      setLastUpdated(null)
-      setIsLoading(false)
+      // Clear balance when user logs out
+      setState({ balance: null, isLoading: false, lastUpdated: null })
+
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
     }
 
+    // Cleanup interval on unmount or when isAuthenticated changes
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current)
@@ -81,25 +87,16 @@ export function BalanceProvider({
   }, [isAuthenticated])
 
   return (
-    <BalanceContext.Provider
-      value={{
-        balance,
-        isLoading,
-        lastUpdated,
-        refreshBalance
-      }}
-    >
+    <BalanceContext.Provider value={{ ...state, refreshBalance: fetchBalance }}>
       {children}
     </BalanceContext.Provider>
   )
 }
 
-export function useBalance() {
+// ─── Hook ─────────────────────────────────────────────────────────────────────
+
+export function useBalance(): BalanceContextValue {
   const ctx = useContext(BalanceContext)
-  if (!ctx) {
-    throw new Error(
-      'useBalance must be used inside BalanceProvider'
-    )
-  }
+  if (!ctx) throw new Error('useBalance must be used inside <BalanceProvider>')
   return ctx
 }

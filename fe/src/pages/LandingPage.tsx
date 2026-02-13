@@ -1,10 +1,17 @@
-import { Link } from 'react-router-dom';
-import { Heart, Send, Clock } from 'lucide-react';
 import { useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { useWalletModal } from '@solana/wallet-adapter-react-ui';
+import { Heart, Send, Clock } from 'lucide-react';
+
+// ── import wallet adapter default styles (required for the modal to show) ────
+import '@solana/wallet-adapter-react-ui/styles.css';
+
+// ── keep Lovable's existing decorative components unchanged ──────────────────
 
 const FloatingHearts = () => {
   const hearts = Array.from({ length: 40 }, (_, i) => {
-    const symbols = ['♡', '♥', '🎀', '❀', '♡', '🎀', '♥', '✿', '♡', '🎀'];
+    const symbols = [ '🎀', '♡', '🎀', '♥', '✿', '♡', '🎀'];
     const symbol = symbols[i % symbols.length];
     const size = 12 + Math.random() * 20;
     const left = Math.random() * 100;
@@ -69,14 +76,46 @@ const MagneticLine = ({ children, delay }: { children: string; delay: number }) 
     <p
       ref={ref}
       className="text-xl md:text-2xl text-ruby-petals font-semibold text-bubbly tagline-pop"
-      style={{ animationDelay: `${delay}s`, transition: 'transform 0.3s cubic-bezier(.25,.46,.45,.94)', fontFamily: "'Playfair Display', serif", fontStyle: 'italic' }}
+      style={{
+        animationDelay: `${delay}s`,
+        transition: 'transform 0.3s cubic-bezier(.25,.46,.45,.94)',
+        fontFamily: "'Playfair Display', serif",
+        fontStyle: 'italic',
+      }}
     >
       {children}
     </p>
   );
 };
 
+const FeatureCard = ({ icon, text }: { icon: React.ReactNode; text: string }) => (
+  <div className="bg-white/60 backdrop-blur-sm border border-bubblegum/40 rounded-3xl p-8 flex flex-col items-center gap-4 hover:border-cherry-soda/50 hover:glow-pink transition-all duration-300 cursor-pointer group">
+    <div className="w-16 h-16 rounded-full bg-pink-mist flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+      {icon}
+    </div>
+    <p className="text-ruby-petals text-sm font-medium text-bubbly text-center">{text}</p>
+  </div>
+);
+
+// ── Main component ────────────────────────────────────────────────────────────
+
 const LandingPage = () => {
+  const { connected } = useWallet();
+  const { setVisible } = useWalletModal();
+  const navigate = useNavigate();
+
+  // If wallet is already connected (e.g. autoConnect on refresh), go straight to app
+  useEffect(() => {
+    if (connected) {
+      navigate('/app', { replace: true });
+    }
+  }, [connected]);
+
+  // Both buttons call this — opens the Phantom/Backpack/Solflare picker modal
+  function handleConnectClick() {
+    setVisible(true);
+  }
+
   return (
     <div className="min-h-screen bg-pink-mist relative overflow-hidden">
       <FloatingHearts />
@@ -89,12 +128,14 @@ const LandingPage = () => {
       {/* Navbar */}
       <nav className="relative z-10 flex items-center justify-between px-8 py-6 max-w-6xl mx-auto">
         <h1 className="text-3xl font-bold gradient-text tracking-tight">SMOOTH</h1>
-        <Link
-          to="/app"
+
+        {/* "Launch App" → opens wallet modal */}
+        <button
+          onClick={handleConnectClick}
           className="px-6 py-2.5 rounded-2xl border-2 border-cherry-soda text-ruby-petals font-semibold text-sm hover:bg-cherry-soda hover:text-white transition-all duration-300 hover:shadow-[0_0_24px_rgba(211,140,157,0.4)] hover:scale-105"
         >
           Launch App
-        </Link>
+        </button>
       </nav>
 
       {/* Hero */}
@@ -109,33 +150,23 @@ const LandingPage = () => {
           <MagneticLine delay={0.4}>Talk is action. On Solana.</MagneticLine>
         </div>
 
-        {/* Connect Wallet Button */}
+        {/* "Connect Your Wallet" → opens wallet modal */}
         <div className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
-          <Link
-            to="/app"
+          <button
+            onClick={handleConnectClick}
             className="inline-block px-12 py-4 rounded-2xl gradient-pink text-white font-semibold text-lg glow-pink-strong hover:scale-105 transition-transform duration-200 text-bubbly"
           >
             Connect Your Wallet
-          </Link>
+          </button>
         </div>
 
-        {/* Feature Cards */}
+        {/* Feature Cards — unchanged */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-20 w-full animate-fade-in" style={{ animationDelay: '0.3s' }}>
-          <FeatureCard
-            icon={<Heart className="w-8 h-8 text-cherry-soda" />}
-            text="What's my balance right now?"
-          />
-          <FeatureCard
-            icon={<Send className="w-8 h-8 text-cherry-soda" />}
-            text="Send 0.5 SOL to my friend Alice"
-          />
-          <FeatureCard
-            icon={<Clock className="w-8 h-8 text-cherry-soda" />}
-            text="Show my last 10 transactions"
-          />
+          <FeatureCard icon={<Heart className="w-8 h-8 text-cherry-soda" />} text="What's my balance right now?" />
+          <FeatureCard icon={<Send className="w-8 h-8 text-cherry-soda" />} text="Send 0.5 SOL to my friend Alice" />
+          <FeatureCard icon={<Clock className="w-8 h-8 text-cherry-soda" />} text="Show my last 10 transactions" />
         </div>
 
-        {/* Bottom pill */}
         <div className="mt-20 animate-fade-in" style={{ animationDelay: '0.4s' }}>
           <p className="text-lg md:text-xl text-ruby-petals font-bold text-bubbly tracking-wide" style={{ fontFamily: "'Playfair Display', serif", fontStyle: 'italic' }}>
             Abra Sol Dabra — now live on Smooth
@@ -143,7 +174,7 @@ const LandingPage = () => {
         </div>
       </main>
 
-      {/* Footer */}
+      {/* Footer — unchanged */}
       <footer className="relative z-10 text-center py-8 border-t border-bubblegum/30">
         <p className="text-xs text-ruby-petals/40 text-bubbly">
           © 2026 Private
@@ -152,14 +183,5 @@ const LandingPage = () => {
     </div>
   );
 };
-
-const FeatureCard = ({ icon, text }: { icon: React.ReactNode; text: string }) => (
-  <div className="bg-white/60 backdrop-blur-sm border border-bubblegum/40 rounded-3xl p-8 flex flex-col items-center gap-4 hover:border-cherry-soda/50 hover:glow-pink transition-all duration-300 cursor-pointer group">
-    <div className="w-16 h-16 rounded-full bg-pink-mist flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-      {icon}
-    </div>
-    <p className="text-ruby-petals text-sm font-medium text-bubbly text-center">{text}</p>
-  </div>
-);
 
 export default LandingPage;
