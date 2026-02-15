@@ -10,11 +10,12 @@ export const aiTools :ChatCompletionTool[]= [
       parameters: {
         type: "object",
         properties: {},
+        required:[],
       },
     },
   },
   {
-    type: "function" as const,
+    type: "function" ,
     function: {
       name: "create_transfer",
       description: "Create a pending SOL transfer transaction that requires user approval",
@@ -39,7 +40,7 @@ export const aiTools :ChatCompletionTool[]= [
     },
   },
   {
-    type: "function" as const,
+    type: "function" ,
     function: {
       name: "get_transaction_history",
       description: "Get recent transaction history for the user's wallet",
@@ -56,7 +57,7 @@ export const aiTools :ChatCompletionTool[]= [
     },
   },
   {
-    type: "function" as const,
+    type: "function",
     function: {
       name: "estimate_fee",
       description: "Estimate network fee for SOL transfer",

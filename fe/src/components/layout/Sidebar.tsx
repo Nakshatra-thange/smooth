@@ -1,37 +1,56 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Plus, MessageSquare, Clock, Settings, Power } from 'lucide-react';
-import { useAppContext } from '@/contexts/AppContext';
 import { useWallet} from '@solana/wallet-adapter-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useChat } from '@/contexts/ChatContext';
+
 const Sidebar = ({ onClose }: { onClose: () => void }) => {
-  const { conversations } = useAppContext();
+  const { conversations} = useChat(); 
+  const { setCurrentConversationId } = useChat();// Add setCurrentConversationId
   const location = useLocation();
+  const navigate = useNavigate();
   const { disconnect } = useWallet();
-const { logout } = useAuth();
-async function handleDisconnect() {
-  await disconnect();
-  logout();
-}
+  const { logout } = useAuth();
+
+  async function handleDisconnect() {
+    await disconnect();
+    logout();
+    onClose();
+  }
+
+  // Handle new chat
+  const handleNewChat = () => {
+    // Clear the current conversation ID in your app context
+    setCurrentConversationId(null); // This tells the app we're starting fresh
+    
+    // Close sidebar on mobile
+    onClose();
+    window.location.href = '/app';
+    
+    // Navigate to base chat route
+    //navigate('/app', { replace: true }); // Use replace to avoid back button issues
+  };
+
   return (
     <div className="w-[260px] h-full bg-app-bg border-r border-app-border flex flex-col">
       {/* Top */}
-      
       <div className="p-4">
-  <div className="flex items-center gap-3 mb-4">
-    <img
-      src="/logo.png"   // 👈 change to your real file name
-      alt="Smooth Logo"
-      className="h-14 w-auto object-contain select-none"
-    />
-  </div>
-        <Link
-          to="/app"
-          onClick={onClose}
+        <div className="flex items-center gap-3 mb-4">
+          <img
+            src="/logo.png"
+            alt="Smooth Logo"
+            className="h-14 w-auto object-contain select-none"
+          />
+        </div>
+        
+        {/* New Chat button */}
+        <button
+          onClick={handleNewChat}
           className="flex items-center gap-2 w-full px-3 py-2.5 rounded-2xl border border-app-border text-app-text hover:border-cherry-soda/40 hover:glow-pink transition-all duration-200 text-sm font-medium"
         >
           <Plus className="w-4 h-4" />
           New Chat
-        </Link>
+        </button>
       </div>
 
       {/* Conversations */}
@@ -49,9 +68,13 @@ async function handleDisconnect() {
           <div className="space-y-1">
             {conversations.map((c) => (
               <Link
-                key={c.id}
+                
                 to={`/app/c/${c.id}`}
-                onClick={onClose}
+                onClick={() => {
+                  setCurrentConversationId(c.id); // Set the conversation ID when clicking existing chat
+                  onClose();
+                  
+                }}
                 className={`flex flex-col w-full px-3 py-2.5 rounded-2xl text-left transition-all duration-200 hover:bg-app-surface-hover ${
                   location.pathname.includes(c.id)
                     ? 'bg-app-surface-hover border border-cherry-soda/20'
@@ -59,7 +82,7 @@ async function handleDisconnect() {
                 }`}
               >
                 <span className="text-sm text-app-text truncate">{c.title}</span>
-                <span className="text-[10px] text-app-text-muted mt-0.5">{c.time}</span>
+                <span className="text-[10px] text-app-text-muted mt-0.5">{c.updatedAt}</span>
               </Link>
             ))}
           </div>
@@ -84,13 +107,11 @@ async function handleDisconnect() {
           <Settings className="w-4 h-4" />
           Settings
         </Link>
+        
+        {/* Disconnect button */}
         <button
+          onClick={handleDisconnect}
           className="flex items-center gap-2 w-full px-3 py-2 rounded-2xl text-app-text-muted hover:text-red-400 hover:bg-app-surface-hover transition-all duration-200 text-sm"
-          onClick={() => {async () => {
-            await disconnect();
-            logout();
-            onClose();
-          }}}
         >
           <Power className="w-4 h-4" />
           Disconnect

@@ -1,5 +1,4 @@
 import { Router , type Request , type Response } from "express";
-
 import { prisma } from "../config/database";
 import { authMiddleware } from "../middleware/auth";
 
@@ -19,29 +18,22 @@ router.get("/", authMiddleware, async (req: Request, res: Response) => {
 
     const conversations = await prisma.conversation.findMany({
       where: {
-        userId: user.id,
+        userId: user.id,  // Using user.id from the authMiddleware
         isActive: true,
       },
       orderBy: {
         updatedAt: "desc",
       },
       include: {
-        _count: {
-          select: { messages: true },
+        messages: {
+          orderBy: { createdAt: "asc" },
         },
       },
     });
 
-    return res.json(
-      conversations.map((c) => ({
-        id: c.id,
-        title: c.title,
-        createdAt: c.createdAt,
-        updatedAt: c.updatedAt,
-        messageCount: c._count.messages,
-      }))
-    );
-  } catch {
+    return res.json(conversations);
+  } catch (error) {
+    console.error("Failed to fetch conversations:", error);
     return res.status(500).json({
       error: "Failed to fetch conversations",
     });
@@ -56,7 +48,7 @@ router.get("/", authMiddleware, async (req: Request, res: Response) => {
 router.get("/:id", authMiddleware, async (req: Request, res: Response) => {
   try {
     const user = req.user;
-    const conversationId = String(req.params.id); // 🔥 FIX
+    const conversationId = String(req.params.id);
 
     if (!user) {
       return res.status(401).json({ error: "Unauthorized" });
@@ -82,7 +74,8 @@ router.get("/:id", authMiddleware, async (req: Request, res: Response) => {
     }
 
     return res.json(conversation);
-  } catch {
+  } catch (error) {
+    console.error("Failed to load conversation:", error);
     return res.status(500).json({
       error: "Failed to load conversation",
     });
@@ -97,7 +90,7 @@ router.get("/:id", authMiddleware, async (req: Request, res: Response) => {
 router.delete("/:id", authMiddleware, async (req: Request, res: Response) => {
   try {
     const user = req.user;
-    const conversationId = String(req.params.id); // 🔥 FIX
+    const conversationId = String(req.params.id);
 
     if (!user) {
       return res.status(401).json({ error: "Unauthorized" });
@@ -122,7 +115,8 @@ router.delete("/:id", authMiddleware, async (req: Request, res: Response) => {
     });
 
     return res.json({ success: true });
-  } catch {
+  } catch (error) {
+    console.error("Failed to delete conversation:", error);
     return res.status(500).json({
       error: "Failed to delete conversation",
     });

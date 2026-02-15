@@ -4,6 +4,8 @@ import { sendMessage as apiSendMessage, getConversations, getConversation, delet
 import { useAuth } from './AuthContext'
 import { MSG_ROLE } from '@/constants'
 import { useNavigate } from "react-router-dom"
+import { useWallet } from "@solana/wallet-adapter-react";
+import { Connection, Transaction } from "@solana/web3.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -47,6 +49,7 @@ interface ChatContextValue extends ChatState {
   createNewConversation: () => void
   deleteConversation: (id: string) => Promise<void>
   loadConversations: () => Promise<void>
+  setCurrentConversationId: (id: string | null) => void; 
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -57,11 +60,18 @@ export const  ChatContext = createContext<ChatContextValue | null>(null)
 
 export function ChatProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth()
+  const { publicKey, sendTransaction } = useWallet();
+
+const connection = new Connection(
+  import.meta.env.VITE_SOLANA_RPC_URL
+);
+
   const navigate = useNavigate()
 
   const [state, setState] = useState<ChatState>({
     conversations: [],
     currentConversationId: null,
+    
     messages: [],
     isSending: false,
     isLoadingMessages: false,
@@ -122,6 +132,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   function createNewConversation() {
     setState(s => ({ ...s, currentConversationId: null, messages: [], error: null }))
   }
+  // Add this function inside your ChatProvider component
+function setCurrentConversationId(id: string | null) {
+  setState(s => ({ ...s, currentConversationId: id }));
+}
 
   // ─── sendMessage ───────────────────────────────────────────────────────────
 
@@ -148,6 +162,25 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
     try {
       const response = await apiSendMessage(trimmed, state.currentConversationId ?? undefined)
+      // 🚀 AUTO SIGN TRANSACTION IF AI CREATED ONE
+if (response.requiresApproval && response.unsignedTx && publicKey) {
+  try {
+    console.log("🔥 Signing transaction from AI...");
+
+    const txBuffer = Buffer.from(response.unsignedTx, "base64");
+    const transaction = Transaction.from(txBuffer);
+
+    const signature = await sendTransaction(transaction, connection);
+
+    console.log("✅ Transaction sent:", signature);
+
+    // notify history view to refresh
+    window.dispatchEvent(new Event("tx-created"));
+  } catch (err) {
+    console.error("❌ Wallet signing failed:", err);
+  }
+}
+
       if (response.requiresApproval) {
         window.dispatchEvent(new Event("tx-created"));
       }
@@ -264,6 +297,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         createNewConversation,
         deleteConversation,
         loadConversations,
+        setCurrentConversationId,
       }}
     >
       {children}
