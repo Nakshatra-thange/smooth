@@ -8,6 +8,7 @@
     "jsx": "react-jsx",
     "allowJs": true,
     "typeRoots": ["./src/types", "./node_modules/@types"],
+    "outDir": "./dist",
 
     // Bundler mode
     "moduleResolution": "bundler",
