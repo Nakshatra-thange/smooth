@@ -21,7 +21,17 @@ const app = express();
 // =============================
 // GLOBAL MIDDLEWARE
 // =============================
-app.use(cors());
+
+
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://smoooth-peach.vercel.app",
+    ],
+    credentials: true,
+  })
+);
 app.use(express.json({ limit: "10mb", strict: false }));
 app.use(requestLogger);
 
