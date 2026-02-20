@@ -2,7 +2,8 @@ import axios from "axios";
 import { getStoredToken } from "./authService";
 
 export const apiClient = axios.create({
-  baseURL: "http://localhost:3000",
+  baseURL: import.meta.env.VITE_API_URL,
+  withCredentials: false,
 });
 
 apiClient.interceptors.request.use((config) => {
