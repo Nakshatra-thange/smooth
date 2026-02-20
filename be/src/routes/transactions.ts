@@ -4,7 +4,8 @@ import { prisma } from "../config/database";
 import { authMiddleware } from "../middleware/auth";
 import { submitSignedTransaction } from "../services/solana/submit";
 import { pollTransactionConfirmation } from "../services/solana/confirm";
-import { TransactionStatus } from "../../generated/prisma/client";
+import { TransactionStatus } from "../../prisma/generated/prisma/client";
+
 
 const router = Router();
 
